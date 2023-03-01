@@ -1,0 +1,267 @@
+body {
+	background-color:#aaaaaa;
+	margin-bottom:80px;
+}
+
+ul,li {
+  list-style: none;
+  float:right;
+  padding-right:10px;
+  display:flex;
+  flex-direction:row;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:center;
+  gap:16px;
+}
+
+h3 {
+	color:white;
+	text-decoration: underline;
+    text-decoration-thickness: 50%;
+	
+}
+
+.italic {
+	font-family:italic;
+}
+
+nav {
+	padding-left:10px;
+	position:fixed;
+    top:0;
+	background-color:black;
+	width:100%;
+	margin-bottom:20px;
+	padding-right:10px;
+}
+
+a {
+  text-decoration: none;
+  font-size:30px;
+  color:white;
+}
+
+a:hover, a:focus {
+  text-decoration: none;
+  outline: none;
+}
+
+.space {
+	width:100%;
+	padding:20px;
+	height:50%;
+	margin-top:50px;
+    margin-bottom:25px;
+}
+
+.space p {
+	font-size:100px;
+	text-align:center;
+	font-style:italic;
+	
+}
+
+.space p strong {
+	color:#ff0000;
+}
+
+#About {
+	border:3px red solid;
+	border-radius:25px;
+	background-color:white;
+	width:40%;
+	padding:20px;
+	margin-left:180px;
+	
+}
+
+#About figure figcaption {
+	font-size:50px;
+	font-weight:bold;
+	text-transform:UPPERCASE;
+	margin-bottom:10px;
+	text-shadow:-8px -13px 8px black;
+}
+
+#About figure img {
+	border-radius:200px;
+	
+}
+
+#About figure div {
+	display:flex;
+    justify-content:center;
+	align-items:center;
+	
+}
+
+#About figure img:hover {
+	opacity:0.5;
+	transition:0.7s;
+	
+}
+
+#About p {
+	font-size:20px;
+	color:grey;
+}
+
+.edu {
+	font-size:100px;
+	font-weight:bold;
+	
+}
+
+#Education{
+	padding:20px;
+}
+
+#Education ul li {
+	color:#000080;
+	font-size:30px;
+}
+
+#Education ul li p {
+	color:black;
+	font-size:20px;
+	text-decoration: underline wavy #000080 4px;
+}
+
+i {
+	transform:rotate(40deg);
+	color:#ff0000;
+}
+
+.div #Skills {
+	width:auto;
+} 
+
+#Skills {
+	padding:20px;
+}
+
+#Skills p {
+	background-color:white;
+}
+
+#Skills ul li {
+	color:#000080;
+	font-size:30px;
+}
+
+#Skills ul li p {
+	color:black;
+	font-size:30px;
+	
+}
+
+#Experience {
+  font-family: sans-serif, "Helvetica Neue", "Lucida Grande", Arial;
+  font-stretch: expanded;
+  }
+
+#Experience fieldset {
+	border:3px solid red;
+}
+
+.dates {
+	color: red;
+	font-size:20px;
+	text-decoration: overline underline black 3px;
+}
+
+.dates:hover {
+	background-color:yellow;
+	font-size: 150%;
+}
+
+.fa {
+  padding: 20px;
+  font-size: 30px;
+  width: 50px;
+  text-align: center;
+  text-decoration: none;
+  margin: 5px 2px;
+  border-radius:22px;
+}
+
+.fa:hover {
+    opacity: 0.7;
+}
+
+.fa-facebook {
+  background: #3B5998;
+  color: white;
+}
+
+
+.fa-linkedin {
+  background: #007bb5;
+  color: white;
+}
+
+.fa-instagram {
+  background: #125688;
+  color: white;
+}
+
+#socialMedia {
+	display:flex;
+	align-items:center;
+	pointer-events:none;
+}
+
+#socialMedia:hover {
+	pointer-events:auto;
+}
+
+.sm-header {
+	font-size:2.6rem;
+	text-transform:uppercase;
+	cursor:pointer;
+	pointer-events:auto;
+}
+
+.line {
+	width:15rem;
+	height:3px;
+	background-color: #fff;
+	margin-left:2rem;
+	margin-right:auto;
+	transform:scaleX(0.2);
+	transform-origin:left;
+	transition:transform 0.5s;
+}
+
+#socialMedia:hover .line {
+	transform: scaleX(1);
+}
+
+.nav-list {
+	display:flex;
+	list-style:none;
+}
+
+#socialMedia a {
+	margin-inline:2.5rem;
+	opacity:0;
+	transition: 
+	 transform 0.5s ,
+	 opacity 0.5s ;
+}
+
+#socialMedia a:nth-child(odd) {
+	transform:translateY(-5rem);
+}
+
+#socialMedia a:nth-child(even) {
+	transform:translateY(-5rem);
+}
+
+#socialMedia:hover a {
+	opacity:1;
+	transform: translateY(0);
+}
+
+
