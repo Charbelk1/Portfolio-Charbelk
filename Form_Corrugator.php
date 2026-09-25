@@ -10,6 +10,7 @@
 	include("config.inc.php");
 	include("Functions_Purchase.php");
 	include("Forms_DataGrid_SalesOrder.php");
+	include("Functions_UserAccess.php");
 
 	$connection = mysqli_connect($config['dbServer'], $config['dbUser'], $config['dbPass']) or die("Could not connect to DB");
 	mysqli_select_db($connection, $_SESSION['dbName']) or die("Could not find DB");
@@ -27,20 +28,112 @@
 		extract($rows);
 	}
 
-	$querylog = "SELECT ifNull(FI_CJRRestrict,0) as FI_CJRRestrict from " . $_SESSION['dbLabel'] . ".listuserdir" .
-		" where Usercode = '" . $_SESSION['useraccount'] . "' and upper(concat(CompanyName,'_',Diryear)) = Upper('" . $_SESSION['dbName'] . "') ";
-	$resultlog = mysqli_query($connection, $querylog) or die(mysqli_error($connection));
-	while ($rows = mysqli_fetch_array($resultlog)) {
-		extract($rows);
-	}
+	$sub_result = getformdetails('CJR', $_SESSION['accessschemaid'], $_SESSION['dbLabel']);
+	$row_login = mysqli_fetch_row($sub_result);
+	$Form_View = $row_login[7];
+	$loginaccess = $Form_View;
+	$FI_CJRApp = $row_login[1];
+	$FI_CJRMod = $row_login[2];
+	$FI_CJRDel = $row_login[3];
+
+	// Access Mode On Insert (same as Form_Delivery's $InsertMode)
+	$InsertMode = '';
+	if ($FI_CJRApp == 0) $InsertMode = ' disabled ';
+
+	// $querylog = "SELECT ifNull(FI_CJRRestrict,0) as FI_CJRRestrict from " . $_SESSION['dbLabel'] . ".listuserdir" .
+	// 	" where Usercode = '" . $_SESSION['useraccount'] . "' and upper(concat(CompanyName,'_',Diryear)) = Upper('" . $_SESSION['dbName'] . "') ";
+	// $resultlog = mysqli_query($connection, $querylog) or die(mysqli_error($connection));
+	// while ($rows = mysqli_fetch_array($resultlog)) {
+	// 	extract($rows);
+	// }
 
 	if ($loginaccess == '' or $loginaccess == 0)
 		header("location:menu.php");
 
-
+	$FI_CJRRestrict = getConditionsvalue('FI_CJRRestrict', $_SESSION['accessid'], $_SESSION['logincompany'], $_SESSION['dbLabel'], $connection);
+	// echo$FI_CJRRestrict;exit;
 	// Language / RTL settings - same helper Form_Delivery uses, with LTR fallbacks when it isn't loaded.
 	$FieldArray  = array();
 	$ButtonArray = array();
+	// Initialize field labels from database or set defaults (same pattern as Form_Delivery)
+	$FieldArray['cjrtitle']['FieldLabel'] = 'CJR';
+	$FieldArray['cjrlocationtitle']['FieldLabel'] = 'Location';
+
+	// Header fields
+	$FieldArray['cjrref']['FieldLabel'] = 'CJR Reference#';
+	$FieldArray['cjrdate']['FieldLabel'] = 'Date';
+
+	// Job card block fields
+	$FieldArray['cjrsof']['FieldLabel'] = 'SOF#';
+	$FieldArray['cjrcustomer']['FieldLabel'] = 'Customer';
+	$FieldArray['cjritemdesc']['FieldLabel'] = 'Item Description';
+	$FieldArray['cjrqtyrequest']['FieldLabel'] = 'Qty Request';
+	$FieldArray['cjrmastercard']['FieldLabel'] = 'MasterCard#';
+	$FieldArray['cjrflutetype']['FieldLabel'] = 'Flute Type';
+	$FieldArray['cjrscoringtype']['FieldLabel'] = 'Scoring Type';
+	$FieldArray['cjrboardneed']['FieldLabel'] = 'BoardNeed';
+	$FieldArray['cjrjobcard']['FieldLabel'] = 'JobCard#';
+	$FieldArray['cjrinsideliner']['FieldLabel'] = 'Inside Liner';
+	$FieldArray['cjroutsideliner']['FieldLabel'] = 'Outside Liner';
+	$FieldArray['cjrplannedqty']['FieldLabel'] = 'Planned Qty';
+	$FieldArray['cjrboxtype']['FieldLabel'] = 'Box Type';
+	$FieldArray['cjrstdgsm']['FieldLabel'] = 'STD GSM';
+	$FieldArray['cjrproducedqty']['FieldLabel'] = 'Produced Qty';
+	$FieldArray['cjrboxsize']['FieldLabel'] = 'Box Size ED';
+	$FieldArray['cjrstdpaper']['FieldLabel'] = 'STD.PAPER';
+	$FieldArray['cjrcjrqty']['FieldLabel'] = 'CJR Qty';
+	$FieldArray['cjrremainingqty']['FieldLabel'] = 'Remaining Qty';
+
+	// Caption-only text (buttons / tooltips), never passes through get_fields_for_render()
+	$FieldArray['cjrdeleterec']['FieldLabel'] = 'Delete Record';
+	$FieldArray['btndatetoday']['FieldLabel'] = 'Today';
+	$FieldArray['btndateclear']['FieldLabel'] = 'Clear';
+
+	// Close/Clear buttons concept - same Hold/Cancel split as Form_Delivery.php
+	$FieldArray['closepending']['FieldLabel'] = 'Hold';
+	$FieldArray['discarddraft']['FieldLabel'] = 'Cancel';
+	$FieldArray['cancelposted']['FieldLabel'] = 'Cancel';
+
+	foreach ($FieldArray as $fieldKey => $fieldInfo) {
+		if (!isset($FieldArray[$fieldKey]['IsHidden'])) $FieldArray[$fieldKey]['IsHidden'] = false;
+		if (!isset($FieldArray[$fieldKey]['MandatoryLabel'])) $FieldArray[$fieldKey]['MandatoryLabel'] = '';
+		if (!isset($FieldArray[$fieldKey]['FieldMod'])) $FieldArray[$fieldKey]['FieldMod'] = '';
+	}
+
+	$vMandatoryFields = '';
+	$sub_result = get_mandatory('CJR', $_SESSION['accessschemaid'], $_SESSION['dbLabel'], $connection);
+	while ($sub_result && ($sub_row = mysqli_fetch_row($sub_result))) {
+		$vFieldLabel = '';
+		$vFieldLabel = get_labelnames('CJR', $_SESSION['dbLabel'], $_SESSION['accessid'], $sub_row[2], $connection);
+
+		$isHidden = ($sub_row[5] == '1');
+
+		$vMandatoryLabel = '';
+
+		if (!$isHidden && $sub_row[1] == '1') {
+			$vMandatoryFields = $vMandatoryFields . $sub_row[2] . ',';
+			$vMandatoryLabel = "<span class='style2'>*</span>&nbsp;";
+		} else {
+			$vMandatoryLabel = "";
+		}
+
+		$vReadOnly = '';
+		if ($sub_row[0] == '0')
+			$vReadOnly = 'readonly';
+
+		if ($vFieldLabel != '') $FieldArray[$sub_row[2]]["FieldLabel"] = $vFieldLabel;
+		$FieldArray[$sub_row[2]]["MandatoryLabel"] = $vMandatoryLabel;
+		$FieldArray[$sub_row[2]]["FieldMod"]       = $vReadOnly;
+		$FieldArray[$sub_row[2]]["IsHidden"]       = $isHidden;
+	}
+	$vMandatoryFields = substr($vMandatoryFields,  0, -1);
+
+	$sub_result = get_labelbuttons($_SESSION['dbLabel'], $_SESSION['accessid'], $connection);
+	while ($sub_row = mysqli_fetch_row($sub_result)) {
+		$ButtonArray[$sub_row[0]]['ButtonLabel'] = $sub_row[1];
+		$ButtonArray[$sub_row[0]]['ButtonTitle'] = $sub_row[2];
+	}
+
 	$rtl_class  = '';
 	$body_dir   = 'ltr';
 	$body_class = '';
@@ -132,7 +225,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset={$_SESSION['encodingmode']}" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CJR</title>
+<title>{$FieldArray['cjrtitle']['FieldLabel']}</title>
 
 <!-- ERP / Vendor CSS -->
 <link type="text/css" href="js/calendar/jquery.datepick.css" rel="stylesheet">
@@ -2667,14 +2760,157 @@ HERE;
 
 	//$message='';
 
-	// Builds one label + control cell, same markup as Form_Delivery's header fields
-	// (field-col > field-row > span.style1 + div.field-control-wrap).
-	function cjrField($label, $control, $colClass = 'col-md-3', $labelClass = '')
+	// Wraps a field label the same way Form_Delivery does: caption + mandatory marker.
+	function cjrLabel($FieldArray, $code, $extraClass = '')
 	{
-		return "<div class='$colClass px-2 field-col'><div class='field-row mb-2'>"
-			. "<span class='style1 $labelClass'>$label</span>"
-			. "<div class='field-control-wrap'>$control</div>"
-			. "</div></div>";
+		$label = $FieldArray[$code]['FieldLabel'] ?? $code;
+		$mandatory = $FieldArray[$code]['MandatoryLabel'] ?? '';
+		return "<span class='style1 $extraClass'>" . $label . "&nbsp;" . $mandatory . "</span>";
+	}
+
+	// Renders a $fieldHtml array through the accessfields render loop (same as Form_Delivery's
+	// get_fields_for_render()/render_fields_grid()). Fields the loop doesn't show (hidden in
+	// field settings, or not registered yet) still get their hidden fallback from $fieldFallback,
+	// so the ids the page JS reads always exist. If CJR has no accessfields rows at all yet,
+	// every field is shown in the order it was built.
+	function cjrRenderFields($connection, $fieldHtml, $fieldFallback = array(), $soloFields = array(), $defaultCol = 'col-md-3')
+	{
+		$rendered = array();
+		$render_result = null;
+		if (function_exists('get_fields_for_render') && function_exists('render_fields_grid')) {
+			$render_result = get_fields_for_render('CJR', $_SESSION['accessschemaid'], $_SESSION['dbLabel'], $connection, 'mainform');
+		}
+
+		if ($render_result && mysqli_num_rows($render_result) > 0) {
+			while ($render_row = mysqli_fetch_assoc($render_result)) {
+				$fieldCode = strtolower($render_row['fieldcode']);
+				if (isset($fieldHtml[$fieldCode]) && intval($render_row['is_hidden']) != 1)
+					$rendered[$fieldCode] = true;
+			}
+			mysqli_data_seek($render_result, 0);
+			render_fields_grid($render_result, $fieldHtml, $soloFields);
+		} else {
+			echo "<div class='row no-gutters render-row'>";
+			foreach ($fieldHtml as $fieldCode => $html) {
+				$col = in_array($fieldCode, $soloFields) ? 'col-md-12' : $defaultCol;
+				echo "<div class='$col px-2 render-field-col field-col'><div class='field-row mb-2'>$html</div></div>";
+				$rendered[$fieldCode] = true;
+			}
+			echo "</div>";
+		}
+
+		foreach ($fieldFallback as $fieldCode => $hiddenHtml) {
+			if (empty($rendered[$fieldCode])) echo $hiddenHtml;
+		}
+	}
+
+	// Builds the $fieldHtml / hidden-fallback arrays for one job card block ($i = job card index).
+	function cjrJobCardFields($i, $v, $FieldArray, $inputClass, $selectClass)
+	{
+		$fieldHtml = array();
+		$fieldFallback = array();
+		$ev = $v['lookupEvents'];
+		$hidden = function ($id, $value, $name = true) {
+			return "<input type='hidden' id='$id'" . ($name ? " name='$id'" : "") . " value='" . htmlspecialchars((string)$value, ENT_QUOTES) . "'>";
+		};
+
+		$fieldHtml['cjrsof'] = cjrLabel($FieldArray, 'cjrsof') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtSOF[$i]' id='txtSOF[$i]' value='" . $v['sof'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjrsof'] = $hidden("txtSOF[$i]", $v['sof']);
+
+		$fieldHtml['cjrcustomer'] = cjrLabel($FieldArray, 'cjrcustomer') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtClient[$i]' id='txtClient[$i]' value='" . $v['client'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjrcustomer'] = $hidden("txtClient[$i]", $v['client']);
+
+		$fieldHtml['cjritemdesc'] = cjrLabel($FieldArray, 'cjritemdesc') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtItemDesc[$i]' id='txtItemDesc[$i]' value='" . $v['itemdesc'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjritemdesc'] = $hidden("txtItemDesc[$i]", $v['itemdesc']);
+
+		$fieldHtml['cjrqtyrequest'] = cjrLabel($FieldArray, 'cjrqtyrequest') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' id='txtQtyRequest[$i]' name='txtQtyRequest[$i]' value='" . $v['qtyrequest'] . "' readonly /></div>";
+		$fieldFallback['cjrqtyrequest'] = $hidden("txtQtyRequest[$i]", $v['qtyrequest']);
+
+		$fieldHtml['cjrmastercard'] = cjrLabel($FieldArray, 'cjrmastercard') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtMasterCardRef[$i]' id='txtMasterCardRef[$i]' value='" . $v['mastercard'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjrmastercard'] = $hidden("txtMasterCardRef[$i]", $v['mastercard']);
+
+		$fieldHtml['cjrflutetype'] = cjrLabel($FieldArray, 'cjrflutetype', $v['lblFlute']) . "
+	<div class='field-control-wrap'><select class='$selectClass' id='txtFluteType[$i]' readonly name='txtFluteType[$i]' onchange='RefreshPage($i)'>" . $v['fluteOptions'] . "</select></div>";
+		$fieldFallback['cjrflutetype'] = $hidden("txtFluteType[$i]", $v['fluteValue']);
+
+		$fieldHtml['cjrscoringtype'] = cjrLabel($FieldArray, 'cjrscoringtype', $v['lblScoring']) . "
+	<div class='field-control-wrap'><select class='$selectClass' name='txtScoringType[$i]' id='txtScoringType[$i]' style='color:" . $v['scoringColor'] . "'>" . $v['scoringOptions'] . "</select></div>";
+		$fieldFallback['cjrscoringtype'] = $hidden("txtScoringType[$i]", $v['scoringValue']);
+
+		$fieldHtml['cjrboardneed'] = cjrLabel($FieldArray, 'cjrboardneed') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' id='txtBoardNeed[$i]' name='txtBoardNeed[$i]' value='" . $v['boardneed'] . "' readonly /></div>";
+		$fieldFallback['cjrboardneed'] = $hidden("txtBoardNeed[$i]", $v['boardneed']);
+
+		$fieldHtml['cjrjobcard'] = cjrLabel($FieldArray, 'cjrjobcard') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtJobCardRef[$i]' id='txtJobCardRef[$i]' value='" . $v['jobcard'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjrjobcard'] = $hidden("txtJobCardRef[$i]", $v['jobcard']);
+
+		$fieldHtml['cjrinsideliner'] = cjrLabel($FieldArray, 'cjrinsideliner') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' id='txtInsideLiner[$i]' name='txtInsideLiner[$i]' value='" . $v['insideliner'] . "' readonly /></div>";
+		$fieldFallback['cjrinsideliner'] = $hidden("txtInsideLiner[$i]", $v['insideliner']);
+
+		$fieldHtml['cjroutsideliner'] = cjrLabel($FieldArray, 'cjroutsideliner', $v['lblOutside']) . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtOutsideLiner[$i]' id='txtOutsideLiner[$i]' value='" . $v['outsideliner'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjroutsideliner'] = $hidden("txtOutsideLiner[$i]", $v['outsideliner']);
+
+		$fieldHtml['cjrplannedqty'] = cjrLabel($FieldArray, 'cjrplannedqty') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='number' id='txtPlannedQty[$i]' name='txtPlannedQty[$i]' onchange='" . $v['plannedOnchange'] . "' value='" . $v['plannedqty'] . "' " . ($FieldArray['cjrplannedqty']['FieldMod'] ?? '') . " /></div>";
+		$fieldFallback['cjrplannedqty'] = $hidden("txtPlannedQty[$i]", $v['plannedqty']);
+
+		$fieldHtml['cjrboxtype'] = cjrLabel($FieldArray, 'cjrboxtype') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtBoxType[$i]' id='txtBoxType[$i]' value='" . $v['boxtype'] . "' readonly></div>";
+		$fieldFallback['cjrboxtype'] = $hidden("txtBoxType[$i]", $v['boxtype']);
+
+		$fieldHtml['cjrstdgsm'] = cjrLabel($FieldArray, 'cjrstdgsm') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' name='txtStdGsm[$i]' id='txtStdGsm[$i]' value='" . $v['stdgsm'] . "' readonly maxlength='20' $ev></div>";
+		$fieldFallback['cjrstdgsm'] = $hidden("txtStdGsm[$i]", $v['stdgsm']);
+
+		$fieldHtml['cjrproducedqty'] = cjrLabel($FieldArray, 'cjrproducedqty') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='" . $v['qtyType'] . "' id='txtProducedQty[$i]' name='txtProducedQty[$i]' value='" . $v['producedqty'] . "' readonly /></div>";
+		$fieldFallback['cjrproducedqty'] = $hidden("txtProducedQty[$i]", $v['producedqty']);
+
+		// Box size (L / W / H) - only when a job card is loaded
+		if (is_array($v['boxsize'])) {
+			$fieldHtml['cjrboxsize'] = cjrLabel($FieldArray, 'cjrboxsize') . "
+	<div class='field-control-wrap cjr-multi-input'>
+		<input class='$inputClass' type='number' id='txtExtLen[$i]' value='" . $v['boxsize'][0] . "' readonly>
+		<input class='$inputClass' type='number' id='txtExtWid[$i]' value='" . $v['boxsize'][1] . "' readonly>
+		<input class='$inputClass' type='number' id='txtExtHei[$i]' value='" . $v['boxsize'][2] . "' readonly>
+	</div>";
+			$fieldFallback['cjrboxsize'] = $hidden("txtExtLen[$i]", $v['boxsize'][0], false) . $hidden("txtExtWid[$i]", $v['boxsize'][1], false) . $hidden("txtExtHei[$i]", $v['boxsize'][2], false);
+		} else {
+			$fieldHtml['cjrboxsize'] = cjrLabel($FieldArray, 'cjrboxsize') . "
+	<div class='field-control-wrap'></div>";
+		}
+
+		// Standard paper combination (10 values) - only when a job card is loaded
+		if (is_array($v['stdpaper'])) {
+			$stdPaper = "";
+			$stdPaperHidden = "";
+			for ($p = 1; $p <= 10; $p++) {
+				$stdPaper .= "<input class='$inputClass' type='text' id='stdpaper$p' readonly value='" . $v['stdpaper'][$p - 1] . "' >";
+				$stdPaperHidden .= $hidden("stdpaper$p", $v['stdpaper'][$p - 1], false);
+			}
+			$fieldHtml['cjrstdpaper'] = cjrLabel($FieldArray, 'cjrstdpaper') . "
+	<div class='field-control-wrap cjr-multi-input'>$stdPaper</div>";
+			$fieldFallback['cjrstdpaper'] = $stdPaperHidden;
+		}
+
+		$cjrQty1Hidden = ($v['cjrqty1'] !== null) ? "<input type='hidden' id='txtCJRQtyy_$i' readonly name='txtCJRQty1[$i]' value='" . $v['cjrqty1'] . "' />" : "";
+		$fieldHtml['cjrcjrqty'] = cjrLabel($FieldArray, 'cjrcjrqty') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' id='txtCJRQty[$i]' readonly name='txtCJRQty[$i]' value='" . $v['cjrqty'] . "' />$cjrQty1Hidden</div>";
+		$fieldFallback['cjrcjrqty'] = $hidden("txtCJRQty[$i]", $v['cjrqty']) . $cjrQty1Hidden;
+
+		$fieldHtml['cjrremainingqty'] = cjrLabel($FieldArray, 'cjrremainingqty') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='" . $v['qtyType'] . "' id='txtRemainingQty[$i]' name='txtRemainingQty[$i]' value='" . $v['remainingqty'] . "' readonly /></div>";
+		$fieldFallback['cjrremainingqty'] = $hidden("txtRemainingQty[$i]", $v['remainingqty']);
+
+		return array($fieldHtml, $fieldFallback);
 	}
 
 	// Returns 'selected' for the matching option (used by the dropdowns below).
@@ -2785,28 +3021,56 @@ HERE;
 	echo "<input type='hidden' name='mainmode' value='$mainmode'>";
 
 	echo "<div class='topbar'>";
-	echo "<div class='topbar-title'><div class='icon-wrap'><i class='fa fa-layer-group'></i></div><span>CJR</span></div>";
+	echo "<div class='topbar-title'><div class='icon-wrap'><i class='fa fa-layer-group'></i></div><span>" . strtoupper($FieldArray['cjrtitle']['FieldLabel']) . "</span></div>";
 	if (htmlspecialchars($message, ENT_QUOTES) != '') {
 		echo "<div class='topbar-message'>" . htmlspecialchars($message, ENT_QUOTES) . "</div>";
 	}
 	echo "<div class='topbar-actions'>";
 
-	echo "<button type='button' class='btn-top btn-top-danger' id='btnClear' name='btnClear' onclick='ClearPage();return false;' title='Clear Page'><i class='fa fa-eraser'></i><span>Clear Page</span></button>";
+	$isRecordLoadedForEdit = ($txtCorrugatorId != '' || $JobCardId != '');
+	$hasReference = ($txtRef != '');
+	// echo "<button type='button' class='btn-top btn-top-danger' id='btnClear' name='btnClear' onclick='ClearPage();return false;' title='Clear Page'><i class='fa fa-eraser'></i><span>Clear Page</span></button>";
+	if (!$isRecordLoadedForEdit) {
+		echo "<button type='button' class='btn-top btn-top-danger' id='btnClear' name='btnClear' onclick='ClearPage();return false;' title='" . $ButtonArray[3]['ButtonTitle'] . "'><i class='fa fa-eraser'></i><span>" . $ButtonArray[3]['ButtonLabel'] . "</span></button>";
+	} else if (!$hasReference) {
+		echo "<button type='button' class='btn-top btn-top-ghost' id='btnClear' name='btnClear' onclick='ClearPage();return false;' title='{$FieldArray['closepending']['FieldLabel']}'><i class='fa fa-right-from-bracket'></i><span>" . $ButtonArray[92]['ButtonLabel'] . "</span></button>";
+	}
+
+	if ($isRecordLoadedForEdit) {
+		$cancelTooltip = $hasReference ? $FieldArray['cancelposted']['FieldLabel'] : $FieldArray['discarddraft']['FieldLabel'];
+		echo "<button type='button' class='btn-top btn-top-danger' id='btnCancel' name='btnCancel' onclick='CancelFunc();return false;' title='$cancelTooltip'><i class='fa fa-ban'></i><span>" . $ButtonArray[93]['ButtonLabel'] . "</span></button>";
+	}
+
+	// if ($txtCorrugatorId != '')
+	// 	echo "<button type='button' class='btn-top btn-top-danger' id='btnCancel' name='btnCancel' onclick='CancelFunc();return false;' title='Cancel'><i class='fa fa-ban'></i><span>Cancel</span></button>";
+
+	// if ($txtCorrugatorId != '')
+	// 	echo "<button type='button' class='btn-top btn-top-success' id='btnPost' name='btnPost' onclick='PostChanges();return false;' title='Save Changes'><i class='fa fa-bookmark'></i><span>Save</span></button>";
 
 	if ($txtCorrugatorId != '')
-		echo "<button type='button' class='btn-top btn-top-danger' id='btnCancel' name='btnCancel' onclick='CancelFunc();return false;' title='Cancel'><i class='fa fa-ban'></i><span>Cancel</span></button>";
+		echo "<button type='button' class='btn-top btn-top-success' id='btnPost' $InsertMode name='btnPost' onclick='PostChanges();return false;' title='" . $ButtonArray[1]['ButtonTitle'] . "'><i class='fa fa-bookmark'></i><span>" . $ButtonArray[1]['ButtonLabel'] . "</span></button>";
 
-	if ($txtCorrugatorId != '')
-		echo "<button type='button' class='btn-top btn-top-success' id='btnPost' name='btnPost' onclick='PostChanges();return false;' title='Save Changes'><i class='fa fa-bookmark'></i><span>Save</span></button>";
+
+	// if ($txtCorrugatorId == '')
+	// 	echo "<button type='button' class='btn-top btn-top-ghost' id='btnSearch' name='btnSearch' onclick='SearchForRef();return false;' title='Search By Reference'><i class='fa fa-search'></i><span>Search</span></button>";
+
+	// if ($txtCorrugatorId == '')
+	// 	echo "<button type='button' class='btn-top btn-top-ghost' id='btnPending' name='btnPending' onclick='SearchForPending();return false;' title='Pending Preparation Order'><i class='fa fa-clock'></i><span>Pending</span></button>";
+
+	if ($txtCorrugatorId == '' && $JobCardId == '')
+		echo "<button type='button' class='btn-top btn-top-ghost' id='btnSearch' name='btnSearch' onclick='SearchForRef();return false;' title='" . $ButtonArray[4]['ButtonTitle'] . "'><i class='fa fa-search'></i><span>" . $ButtonArray[4]['ButtonLabel'] . "</span></button>";
+	// Search By Reference
 
 	if ($txtCorrugatorId == '')
-		echo "<button type='button' class='btn-top btn-top-ghost' id='btnSearch' name='btnSearch' onclick='SearchForRef();return false;' title='Search By Reference'><i class='fa fa-search'></i><span>Search</span></button>";
+		echo "<button type='button' class='btn-top btn-top-ghost' id='btnPending' name='btnPending' onclick='SearchForPending();return false;' title='" . $ButtonArray[38]['ButtonTitle'] . "'><i class='fa fa-clock'></i><span>" . $ButtonArray[38]['ButtonLabel'] . "</span></button>";
 
-	if ($txtCorrugatorId == '')
-		echo "<button type='button' class='btn-top btn-top-ghost' id='btnPending' name='btnPending' onclick='SearchForPending();return false;' title='Pending Preparation Order'><i class='fa fa-clock'></i><span>Pending</span></button>";
 
-	if ($mainaction != 'edit' || $txtCorrugatorId != '')
-		echo "<button type='button' class='btn-top btn-top-ghost' id='btnLoad' name='btnLoad' onclick='SearchApprovedKeyLine();return false;' title='Load JobCard'><i class='fa fa-undo'></i><span>Load JobCard</span></button>";
+	// if ($mainaction != 'edit' || $txtCorrugatorId != '')
+	// 	echo "<button type='button' class='btn-top btn-top-ghost' id='btnLoad' name='btnLoad' onclick='SearchApprovedKeyLine();return false;' title='Load JobCard'><i class='fa fa-undo'></i><span>Load JobCard</span></button>";
+
+	if ($txtCorrugatorId == "" && $mainaction != 'edit')
+		echo "<button type='button' class='btn-top btn-top-ghost' id='btnLoad' name='btnLoad' onclick='SearchApprovedKeyLine();return false;' title='" . $ButtonArray[84]['ButtonTitle'] . "'><i class='fa fa-undo'></i><span>" . $ButtonArray[84]['ButtonLabel'] . "</span></button>";
+
 
 	//echo "<button type='button' class='btn-top btn-top-ghost' id='btnloadTransfer' name='btnloadTransfer' onclick='loadtransfer();return false;' title='Load Transfer'><i class='fa fa-undo'></i><span>Load Transfer</span></button>";
 
@@ -2841,21 +3105,22 @@ HERE;
 	$corrugator_reference = $corrugator_reference ?? '';
 
 
-	/* ===================== HEADER FIELDS ===================== */
+	/* ===================== HEADER FIELDS ($fieldHtml + render loop, same as Form_Delivery) ===================== */
+	$fieldHtml = array();
+	$fieldFallback = array();
+
+	$fieldHtml['cjrref'] = cjrLabel($FieldArray, 'cjrref') . "
+	<div class='field-control-wrap'><input class='$inputClass' type='text' id='corrugator_reference' name='corrugator_reference' value='" . htmlspecialchars($corrugator_reference, ENT_QUOTES) . "' maxlength='10' " . $FieldArray['cjrref']['FieldMod'] . " /></div>";
+	$fieldFallback['cjrref'] = "<input type='hidden' id='corrugator_reference' name='corrugator_reference' value='" . htmlspecialchars($corrugator_reference, ENT_QUOTES) . "'>";
+
+	$fieldHtml['cjrdate'] = cjrLabel($FieldArray, 'cjrdate') . "
+	<div class='field-control-wrap'><input class='$inputClass mydate' type='text' id='corrugator_date' name='corrugator_date' value='$corrugator_date' onBlur='checkDateFormat(this)' maxlength='10'></div>";
+	$fieldFallback['cjrdate'] = "<input type='hidden' id='corrugator_date' name='corrugator_date' value='$corrugator_date'>";
+
 	echo "<div class='row no-gutters'>
-		<div class='col-md-12 bg-d-1 bg-d-1-flush'>
-		<div class='row no-gutters render-row'>";
-
-	echo cjrField(
-		"CJR Reference#",
-		"<input class='$inputClass' type='text' id='corrugator_reference' name='corrugator_reference' value='" . htmlspecialchars($corrugator_reference, ENT_QUOTES) . "' maxlength='10' />"
-	);
-	echo cjrField(
-		"Date",
-		"<input class='$inputClass mydate' type='text' id='corrugator_date' name='corrugator_date' value='$corrugator_date' onBlur='checkDateFormat(this)' maxlength='10'>"
-	);
-
-	echo "</div></div></div>";
+		<div class='col-md-12 bg-d-1 bg-d-1-flush'>";
+	cjrRenderFields($connection, $fieldHtml, $fieldFallback);
+	echo "</div></div>";
 
 
 	/* ===================== JOB CARDS (Upper / Lower stacker) ===================== */
@@ -3143,66 +3408,50 @@ HERE;
 
 			echo "<div class='cjr-jobcard-block'>";
 			echo "<div class='cjr-jobcard-header'>
-				<span class='style1 cjr-jobcard-title'>JobCard# " . htmlspecialchars($rowsdt[19], ENT_QUOTES) . "</span>
-				<button type='button' class='btn-top btn-top-danger' onclick=\"DeleteRecordUpperLower('" . $txtCorrugatorId . "','" . $i . "','" . $txtJobCardIdArr[$i] . "','" . $ulstacker_id . "');return false;\" title='Delete Record'><i class='fa fa-trash'></i><span>Delete</span></button>
+				<span class='style1 cjr-jobcard-title'>" . $FieldArray['cjrjobcard']['FieldLabel'] . " " . htmlspecialchars($rowsdt[19], ENT_QUOTES) . "</span>
+				<button type='button' class='btn-top btn-top-danger' onclick=\"DeleteRecordUpperLower('" . $txtCorrugatorId . "','" . $i . "','" . $txtJobCardIdArr[$i] . "','" . $ulstacker_id . "');return false;\" title='" . $FieldArray['cjrdeleterec']['FieldLabel'] . "'><i class='fa fa-trash'></i><span>" . $FieldArray['cjrdeleterec']['FieldLabel'] . "</span></button>
 			</div>";
 
-			// Row 1
-			echo "<div class='row no-gutters render-row'>";
-			echo cjrField("SOF#", "<input class='$inputClass' type='text' name='txtSOF[$i]' id='txtSOF[$i]' value='" . $rowsdt[18] . "' readonly maxlength='20' $lookupEvents>");
-			echo cjrField("Customer" . $orderimg2, "<input class='$inputClass' type='text' name='txtClient[$i]' id='txtClient[$i]' value='" . $rowsdt[14] . "' readonly maxlength='20' $lookupEvents>");
-			echo cjrField("Item Description" . $orderimg2, "<input class='$inputClass' type='text' name='txtItemDesc[$i]' id='txtItemDesc[$i]' value='" . $rowsdt[6] . "' readonly maxlength='20' $lookupEvents>");
-			echo cjrField("Qty Request", "<input class='$inputClass' type='text' id='txtQtyRequest[$i]' name='txtQtyRequest[$i]' value='$rowsdt[12]' readonly />");
-			echo "</div>";
+			$stdPaperValues = array();
+			for ($p = 1; $p <= 10; $p++) $stdPaperValues[] = $rowsdt[29 + $p];
 
-			// Row 2
-			echo "<div class='row no-gutters render-row'>";
-			echo cjrField("MasterCard#", "<input class='$inputClass' type='text' name='txtMasterCardRef[$i]' id='txtMasterCardRef[$i]' value='" . $mastercardRef . "' readonly maxlength='20' $lookupEvents>");
-			echo cjrField("Flute Type" . $orderimg2, "<select class='$selectClass' id='txtFluteType[$i]' readonly name='txtFluteType[$i]' onchange='RefreshPage($i)'>$fluteOptions</select>", 'col-md-3', $lblFluteClass);
-			echo cjrField("Scoring Type", "<select class='$selectClass' name='txtScoringType[$i]' id='txtScoringType[$i]' style='color:$color1'>$scoringOptions</select>", 'col-md-3', $lblScoringClass);
-			echo cjrField("BoardNeed" . $orderimg2, "<input class='$inputClass' type='text' id='txtBoardNeed[$i]' name='txtBoardNeed[$i]' value='$rowsdt[41]' readonly />");
-			echo "</div>";
+			list($fieldHtml, $fieldFallback) = cjrJobCardFields($i, array(
+				'lookupEvents'   => $lookupEvents,
+				'sof'            => $rowsdt[18],
+				'client'         => $rowsdt[14],
+				'itemdesc'       => $rowsdt[6],
+				'qtyrequest'     => $rowsdt[12],
+				'mastercard'     => $mastercardRef,
+				'fluteOptions'   => $fluteOptions,
+				'fluteValue'     => $rowsdt[15],
+				'lblFlute'       => $lblFluteClass,
+				'scoringOptions' => $scoringOptions,
+				'scoringValue'   => $rowsdt[7],
+				'scoringColor'   => $color1,
+				'lblScoring'     => $lblScoringClass,
+				'boardneed'      => $rowsdt[41],
+				'jobcard'        => $rowsdt[19],
+				'insideliner'    => ucfirst($rowsdt[9]),
+				'outsideliner'   => ucfirst($rowsdt[8]),
+				'lblOutside'     => $lblOutsideClass,
+				'plannedqty'     => $rowsdt[20],
+				'plannedOnchange' => "cuts($i);remainingQty($i);cuts(1);UReq($i);SubmitCorGrid($i,$corgridJs,1,0,50,$txtCorrugatorId, $ulstackerJs)",
+				'boxtype'        => $boxTypeCode,
+				'stdgsm'         => $rowsdt[11],
+				'producedqty'    => $GdQty,
+				'qtyType'        => 'text',
+				'boxsize'        => array($rowsdt[27], $rowsdt[28], $rowsdt[29]),
+				'stdpaper'       => $stdPaperValues,
+				'cjrqty'         => $cjrQty,
+				'cjrqty1'        => $cjrQty1,
+				'remainingqty'   => $rowsdt[22],
+			), $FieldArray, $inputClass, $selectClass);
 
-			// Row 3
-			echo "<div class='row no-gutters render-row'>";
-			echo cjrField("JobCard#", "<input class='$inputClass' type='text' name='txtJobCardRef[$i]' id='txtJobCardRef[$i]' value='" . $rowsdt[19] . "' readonly maxlength='20' $lookupEvents>");
-			echo cjrField("Inside Liner" . $orderimg2, "<input class='$inputClass' type='text' id='txtInsideLiner[$i]' name='txtInsideLiner[$i]' value='" . ucfirst($rowsdt[9]) . "' readonly />");
+			// Always posted regardless of field settings (not user-facing fields)
 			echo "<input type='hidden' id='txtFlutting2[$i]' name='txtFlutting2[$i]' value='$rowsdt[10]' readonly />";
-			echo cjrField("Outside Liner" . $orderimg3, "<input class='$inputClass' type='text' name='txtOutsideLiner[$i]' id='txtOutsideLiner[$i]' value='" . ucfirst($rowsdt[8]) . "' readonly maxlength='20' $lookupEvents>", 'col-md-3', $lblOutsideClass);
-			echo cjrField("Planned Qty" . $orderimg3, "<input class='$inputClass' type='number' id='txtPlannedQty[$i]' name='txtPlannedQty[$i]' onchange='cuts($i);remainingQty($i);cuts(1);UReq($i);SubmitCorGrid($i,$corgridJs,1,0,50,$txtCorrugatorId, $ulstackerJs)' value='$rowsdt[20]' />");
-			echo "</div>";
+			echo "<input type='hidden' name='txtBoxTypeId[$i]' id='txtBoxTypeId[$i]' value='$rowsdt[5]' readonly>";
 
-			// Row 4
-			echo "<div class='row no-gutters render-row'>";
-			echo cjrField("Box Type" . $orderimg3, "<input class='$inputClass' type='text' name='txtBoxType[$i]' id='txtBoxType[$i]' value='$boxTypeCode' readonly>"
-				. "<input type='hidden' name='txtBoxTypeId[$i]' id='txtBoxTypeId[$i]' value='$rowsdt[5]' readonly>");
-			echo cjrField("STD GSM" . $orderimg3, "<input class='$inputClass' type='text' name='txtStdGsm[$i]' id='txtStdGsm[$i]' value='" . $rowsdt[11] . "' readonly maxlength='20' $lookupEvents>");
-			echo "<div class='col-md-3 px-2 field-col'></div>";
-			echo cjrField("Produced Qty" . $orderimg2, "<input class='$inputClass' type='text' id='txtProducedQty[$i]' readonly name='txtProducedQty[$i]' value='$GdQty' />");
-			echo "</div>";
-
-			// Row 5
-			echo "<div class='row no-gutters render-row'>";
-			echo cjrField("Box Size ED" . $orderimg3, "<div class='cjr-multi-input'>
-					<input class='$inputClass' type='number' id='txtExtLen[$i]' value='$rowsdt[27]' readonly>
-					<input class='$inputClass' type='number' id='txtExtWid[$i]' value='$rowsdt[28]' readonly>
-					<input class='$inputClass' type='number' id='txtExtHei[$i]' value='$rowsdt[29]' readonly>
-				</div>");
-			$stdPaper = "<div class='cjr-multi-input'>";
-			for ($p = 1; $p <= 10; $p++) {
-				$stdPaper .= "<input class='$inputClass' type='text' id='stdpaper$p' readonly value='" . $rowsdt[29 + $p] . "' >";
-			}
-			$stdPaper .= "</div>";
-			echo cjrField("STD.PAPER" . $orderimg3, $stdPaper, 'col-md-6');
-			echo cjrField("CJR Qty" . $orderimg2, "<input class='$inputClass' type='text' id='txtCJRQty[$i]' readonly name='txtCJRQty[$i]' value='$cjrQty' />"
-				. "<input type='hidden' id='txtCJRQtyy_$i' readonly name='txtCJRQty1[$i]' value='$cjrQty1' />");
-			echo "</div>";
-
-			// Row 6
-			echo "<div class='row no-gutters render-row'>";
-			echo "<div class='col-md-9 px-2 field-col'></div>";
-			echo cjrField("Remaining Qty" . $orderimg2, "<input class='$inputClass' type='text' id='txtRemainingQty[$i]' name='txtRemainingQty[$i]' readonly value='$rowsdt[22]' />");
-			echo "</div>";
+			cjrRenderFields($connection, $fieldHtml, $fieldFallback, array('cjrstdpaper'));
 
 			echo "</div>"; // .cjr-jobcard-block
 		}
@@ -3212,7 +3461,8 @@ HERE;
 
 		$mainaction = 'edit';
 		// $mainmode = 'edit';
-		$txtLinkedMcRef = explode(" ,", $txtLinkedMcRef ?? '');
+		if (!is_array($txtLinkedMcRef ?? null))
+			$txtLinkedMcRef = explode(" ,", $txtLinkedMcRef ?? '');
 	}
 
 	echo "<input type='hidden' name='index' id='index' value='$i'>";
@@ -3242,52 +3492,41 @@ HERE;
 			. "<option value='PP'" . cjrSelected('PP', $emptyScoring) . ">PP</option>"
 			. "<option value='NA'" . cjrSelected('NA', $emptyScoring) . ">N/A</option>";
 
+		list($fieldHtml, $fieldFallback) = cjrJobCardFields($i, array(
+			'lookupEvents'   => $lookupEvents,
+			'sof'            => '',
+			'client'         => '',
+			'itemdesc'       => '',
+			'qtyrequest'     => '',
+			'mastercard'     => '',
+			'fluteOptions'   => $fluteOptions,
+			'fluteValue'     => $emptyFlute,
+			'lblFlute'       => '',
+			'scoringOptions' => $scoringOptions,
+			'scoringValue'   => $emptyScoring,
+			'scoringColor'   => '',
+			'lblScoring'     => '',
+			'boardneed'      => '',
+			'jobcard'        => '',
+			'insideliner'    => '',
+			'outsideliner'   => '',
+			'lblOutside'     => '',
+			'plannedqty'     => $txtPlannedQty,
+			'plannedOnchange' => "cuts($i);remainingQty($i);SubmitCorGrid($i,$corgridJs,1,0,50,$txtCorrugatorId,0)",
+			'boxtype'        => '',
+			'stdgsm'         => '',
+			'producedqty'    => $txtProducedQty,
+			'qtyType'        => 'number',
+			'boxsize'        => null,
+			'stdpaper'       => null,
+			'cjrqty'         => $cjrQty,
+			'cjrqty1'        => null,
+			'remainingqty'   => $txtRemainingQty,
+		), $FieldArray, $inputClass, $selectClass);
+
 		echo "<div class='cjr-jobcard-block'>";
-
-		// Row 1
-		echo "<div class='row no-gutters render-row'>";
-		echo cjrField("SOF#", "<input class='$inputClass' type='text' name='txtSOF[$i]' id='txtSOF[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo cjrField("Customer" . $orderimg2, "<input class='$inputClass' type='text' name='txtClient[$i]' id='txtClient[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo cjrField("Item Description" . $orderimg2, "<input class='$inputClass' type='text' name='txtItemDesc[$i]' id='txtItemDesc[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo cjrField("Qty Request", "<input class='$inputClass' type='text' id='txtQtyRequest[$i]' name='txtQtyRequest[$i]' value='' readonly />");
-		echo "</div>";
-
-		// Row 2
-		echo "<div class='row no-gutters render-row'>";
-		echo cjrField("MasterCard#", "<input class='$inputClass' type='text' name='txtMasterCardRef[$i]' id='txtMasterCardRef[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo cjrField("Flute Type" . $orderimg2, "<select class='$selectClass' id='txtFluteType[$i]' readonly name='txtFluteType[$i]' onchange='RefreshPage($i)'>$fluteOptions</select>");
-		echo cjrField("Scoring Type", "<select class='$selectClass' name='txtScoringType[$i]' id='txtScoringType[$i]'>$scoringOptions</select>");
-		echo cjrField("BoardNeed" . $orderimg2, "<input class='$inputClass' type='text' id='txtBoardNeed[$i]' name='txtBoardNeed[$i]' value='' readonly />");
-		echo "</div>";
-
-		// Row 3
-		echo "<div class='row no-gutters render-row'>";
-		echo cjrField("JobCard#", "<input class='$inputClass' type='text' name='txtJobCardRef[$i]' id='txtJobCardRef[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo cjrField("Inside Liner" . $orderimg2, "<input class='$inputClass' type='text' id='txtInsideLiner[$i]' name='txtInsideLiner[$i]' value='' readonly />");
 		echo "<input type='hidden' id='txtFlutting2[$i]' name='txtFlutting2[$i]' value='' readonly />";
-		echo cjrField("Outside Liner" . $orderimg3, "<input class='$inputClass' type='text' name='txtOutsideLiner[$i]' id='txtOutsideLiner[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo cjrField("Planned Qty" . $orderimg3, "<input class='$inputClass' type='number' id='txtPlannedQty[$i]' name='txtPlannedQty[$i]' value='$txtPlannedQty' onchange='cuts($i);remainingQty($i);SubmitCorGrid($i,$corgridJs,1,0,50,$txtCorrugatorId,0)' />");
-		echo "</div>";
-
-		// Row 4
-		echo "<div class='row no-gutters render-row'>";
-		echo cjrField("Box Type" . $orderimg3, "<input class='$inputClass' type='text' name='txtBoxType[$i]' id='txtBoxType[$i]' readonly>");
-		echo cjrField("STD GSM" . $orderimg3, "<input class='$inputClass' type='text' name='txtStdGsm[$i]' id='txtStdGsm[$i]' value='' readonly maxlength='20' $lookupEvents>");
-		echo "<div class='col-md-3 px-2 field-col'></div>";
-		echo cjrField("Produced Qty" . $orderimg2, "<input class='$inputClass' type='number' id='txtProducedQty[$i]' name='txtProducedQty[$i]' value='$txtProducedQty' readonly />");
-		echo "</div>";
-
-		// Row 5
-		echo "<div class='row no-gutters render-row'>";
-		echo cjrField("Box Size ED" . $orderimg3, "", 'col-md-9');
-		echo cjrField("CJR Qty" . $orderimg2, "<input class='$inputClass' type='text' id='txtCJRQty[$i]' readonly name='txtCJRQty[$i]' value='$cjrQty' />");
-		echo "</div>";
-
-		// Row 6
-		echo "<div class='row no-gutters render-row'>";
-		echo "<div class='col-md-9 px-2 field-col'></div>";
-		echo cjrField("Remaining Qty" . $orderimg2, "<input class='$inputClass' type='number' id='txtRemainingQty[$i]' name='txtRemainingQty[$i]' value='$txtRemainingQty' readonly />");
-		echo "</div>";
+		cjrRenderFields($connection, $fieldHtml, $fieldFallback, array('cjrstdpaper'));
 
 		echo "</div>"; // .cjr-jobcard-block
 	}
@@ -3322,7 +3561,7 @@ HERE;
 
 	/* ===================== LOCATION GRID ===================== */
 	echo "<div class='topbar' id='gridToolbar'>";
-	echo "  <div class='topbar-title'><div class='icon-wrap'><i class='fa fa-location-dot'></i></div><span>Location</span></div>";
+	echo "  <div class='topbar-title'><div class='icon-wrap'><i class='fa fa-location-dot'></i></div><span>" . $FieldArray['cjrlocationtitle']['FieldLabel'] . "</span></div>";
 	echo "</div>";
 
 	echo "<div class='row no-gutters'>
@@ -3390,12 +3629,12 @@ flatpickr(".mydate", {
 		footer.style.borderTop = "1px solid #eee";
 		const todayBtn = document.createElement("button");
 		todayBtn.type = "button";
-		todayBtn.innerHTML = "Today";
+		todayBtn.innerHTML = "{$FieldArray['btndatetoday']['FieldLabel']}";
 		todayBtn.style.cursor = "pointer";
 		todayBtn.onclick = () => instance.setDate(new Date());
 		const clearBtn = document.createElement("button");
 		clearBtn.type = "button";
-		clearBtn.innerHTML = "Clear";
+		clearBtn.innerHTML = "{$FieldArray['btndateclear']['FieldLabel']}";
 		clearBtn.style.cursor = "pointer";
 		clearBtn.onclick = () => instance.clear();
 		footer.appendChild(todayBtn);
