@@ -502,6 +502,13 @@ table.grid_data th {
   color: #000000;
   /* border-left: 0px solid #000000; */
 }
+/* Print: landscape page, every label and value kept on one line */
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  .style1_1, td, th { white-space: nowrap; }
+  .style1_1, td { font-size: 11px; }
+  table { table-layout: auto !important; }
+}
   </style>";
 
 
