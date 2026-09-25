@@ -344,7 +344,9 @@ echo "<style>
 td {
   /*color: #0A1172;*/
   font-weight: bold;
+  word-wrap: break-word;
 }
+table { max-width: 100%; }
 
 .overlay-texts1{
     position: absolute;
@@ -607,30 +609,9 @@ where corrugatorid=" . $txtCJRId . "  ";
 
 
 
-  echo "<table border=0 align='center' width=100% class='bg'>
-    <colgroup>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-    <col width=200>
-
-    <col width=200>
-    <col width=200>
-    <col width=200>
-
-
-  
-    </colgroup>
+  echo "<table border=0 align='center' width=100% class='bg' style='table-layout:fixed;'>
     <tr>
-    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td><h1 style='color:black;text-align:center;border:none;background-color:#D8D8D8;'><b>{$FieldArray['cjrpvheader']['FieldLabel']}</b></h1></td><td></td><td></td><td></td><td></td>
-        <td></td><td></td><td></td></tr></table>";
+    <td align='center'><h1 style='color:black;text-align:center;border:none;background-color:#D8D8D8;'><b>{$FieldArray['cjrpvheader']['FieldLabel']}</b></h1></td></tr></table>";
 
 
   $printedDate = date("d/m/Y H:i:s");
@@ -638,15 +619,17 @@ where corrugatorid=" . $txtCJRId . "  ";
   print <<<HERE
 	
 		<table border="0" style='table-layout:fixed;width:100%;'>
-		<col width=140>
-		<col width=150>
-		<col width=120>
-		<col width=300>
-		<col width=150>
-		<col width=60>
-		<col width=200>
-		<col width=140>
-		<col width=165>
+		<col width='12.5%'>
+		<col width='8.5%'>
+		<col width='9.5%'>
+		<col width='15.5%'>
+		<col width='13.5%'>
+		<col width='2%'>
+		<col width='12.5%'>
+		<col width='11%'>
+		<col width='11.5%'>
+		<col width='1.75%'>
+		<col width='1.75%'>
    
 
     <tr height=3px></tr>
@@ -826,22 +809,22 @@ echo "<tr height=15px></tr>";
 
 
 
-echo "   <tr><td colspan=9>";
-echo "<table border='0' style='border-collapse:collapse;' class='grid_data'>
+echo "   <tr><td colspan=11>";
+echo "<table border='0' style='border-collapse:collapse;table-layout:fixed;width:100%;' class='grid_data'>
 <colgroup>
-<col width='200px'>
-<col width='180px'>
-<col width='115px'>
-<col width='115px'>
-<col width='115px'>
-<col width='115px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
+		<col width='12%'>
+		<col width='10.6%'>
+		<col width='6.85%'>
+		<col width='6.85%'>
+		<col width='6.85%'>
+		<col width='6.85%'>
+		<col width='7.14%'>
+		<col width='7.14%'>
+		<col width='7.14%'>
+		<col width='7.14%'>
+		<col width='7.14%'>
+		<col width='7.14%'>
+		<col width='7.14%'>
 </colgroup>
 <tr>
 <th style='$border;'><span class='style1_1'>{$FieldArray['cjrpvcorrid']['FieldLabel']}</span></th>
@@ -962,21 +945,20 @@ $resultLoc = mysqli_query($connection, $queryLoc);
 
 
 
-echo "   <tr><td colspan=9>";
-echo "<table border='0' style='border-collapse:collapse;' class='grid_data'>
+echo "   <tr><td colspan=11>";
+echo "<table border='0' style='border-collapse:collapse;table-layout:fixed;width:100%;' class='grid_data'>
 <colgroup>
-<col width='150px'>
-<col width='140px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='210px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-<col width='120px'>
-
+		<col width='10.3%'>
+		<col width='9.6%'>
+		<col width='8.2%'>
+		<col width='8.2%'>
+		<col width='8.2%'>
+		<col width='8.2%'>
+		<col width='14.4%'>
+		<col width='8.2%'>
+		<col width='8.2%'>
+		<col width='8.2%'>
+		<col width='8.3%'>
 </colgroup>
 <tr>
 <th style='$border;'><span class='style1_1'></span></th>
@@ -1092,21 +1074,20 @@ if (strlen((string)($flutetype_code ?? '')) == 1) {
   $rowsNb_ = 3;
 }
 
-echo " </table><table border='0' style='border-collapse:collapse;'>
+echo " </table><table border='0' style='border-collapse:collapse;table-layout:fixed;width:100%;'>
 <colgroup>
-<col width='150px'>
-<col width='120px'>
-<col width='150px'>
-<col width='120px'>
-<col width='150px'>
-<col width='120px'>
-<col width='150px'>
-<col width='120px'>
-<col width='150px'>
-<col width='120px'>
-<col width='180px'>
-<col width='120px'>
-
+		<col width='10%'>
+		<col width='5%'>
+		<col width='12%'>
+		<col width='5%'>
+		<col width='11%'>
+		<col width='5%'>
+		<col width='12.5%'>
+		<col width='5%'>
+		<col width='9%'>
+		<col width='5%'>
+		<col width='15.5%'>
+		<col width='5%'>
 </colgroup><tr>
 <td class='bg'><span class='style1_1'>{$FieldArray['cjrpvurequired']['FieldLabel']}</span></td>
 <td><font face='Verdana' size='2' ><b>$UReqTot</b></font></td>";
