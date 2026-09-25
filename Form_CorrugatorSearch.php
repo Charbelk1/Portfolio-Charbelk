@@ -51,9 +51,11 @@ if ($fromdate == '') {
 	} else if ($search_startingdate == 1) {
 		$fromdate = date('01/m/Y');
 	} else if ($search_startingdate == 0 || $search_startingdate == '') {
-		$search_startingdate = '';
-		$added_timestamp = strtotime('-' . $search_startingdate . ' month', time());
-		$fromdate = date('01/m/Y', $added_timestamp);
+		// was strtotime('- month') here, which returns false -> From date 01/01/1970 (whole history searched)
+		$fromdate = date('01/m/Y');
+	} else if ($search_startingdate > 1) {
+		// N months back (old CJR search behaviour)
+		$fromdate = date('01/m/Y', strtotime('-' . (int)$search_startingdate . ' month', time()));
 	}
 }
 if ($todate == '')
@@ -552,33 +554,56 @@ if (empty($ViewPeriodDate))
 if (empty($ViewNumberOfDays))
 	$ViewNumberOfDays = 1;
 
-$querysearch = " SELECT corrugator_id as corrugator_id, jobcardid AS JobCard_Id, jobcardid2 AS JobCard_Id2, corrugator_reference as corrugator_reference,date_format(corrugator_date,'%d/%m/%Y') as corrugator_date,
-related_salesorder as related_salesorder,related_mastercard as related_mastercard ,corrugator_confirm as corrugator_confirm , corrugator_approve as corrugator_approve
-From corrugator1
-left join jobcard    on corrugator1.jobcardid    = jobcard.jobcard_id
-                     or corrugator1.jobcardid2   = jobcard.jobcard_id
-left join mastercard on mastercard.mastercard_id = jobcard.related_mastercard
-left join sorder     on sorder.sorder_id         = jobcard.related_salesorder
-left join clients    on clients.Ledger_number    = jobcard.Clientcode ";
+// Job card table used by the CJR search (the page previously joined "jobcard"; switch here if needed)
+$jobcardTable = "jobcardMP";
 
-$querysearch = $querysearch .
-	" Where (($searchby = 2 and corrugator_reference Like Concat('%',ifNull($PRef, corrugator_reference),'%') and date_format(corrugator_date,'%Y-%m-%d') >= '" . explodeword($fromdate) . "'  and  date_format(corrugator_date,'%Y-%m-%d') <= '" . explodeword($todate) . "')   Or " .
-	"        ($searchby = 1 and date_format(corrugator_date,'%Y-%m-%d') = ifNull($PRef, date_format(corrugator_date,'%Y-%m-%d')) ) Or  " .
-	"        ($searchby = 4 and mastercard.mastercard_reference Like Concat('%',ifNull($PRef, mastercard.mastercard_reference),'%') and date_format(corrugator_date,'%Y-%m-%d') >= '" . explodeword($fromdate) . "'  and  date_format(corrugator_date,'%Y-%m-%d') <= '" . explodeword($todate) . "') Or  " .
-	"        ($searchby = 5 and sorder_reference Like Concat('%',ifNull($PRef, sorder_reference),'%') and date_format(corrugator_date,'%Y-%m-%d') >= '" . explodeword($fromdate) . "'  and  date_format(corrugator_date,'%Y-%m-%d') <= '" . explodeword($todate) . "') Or  " .
-	"        ($searchby = 3 and (Clientcode Like Concat('%',ifNull($PRef, Clientcode),'%') or clients.Ledger_name Like Concat(ifNull($PRef,  clients.Ledger_name),'%')
-			 ) and date_format(corrugator_date,'%Y-%m-%d') >= '" . explodeword($fromdate) . "'  and  date_format(corrugator_date,'%Y-%m-%d') <= '" . explodeword($todate) . "'))";
+// Performance: the old query joined the job card table with
+//   "on corrugator1.jobcardid = jobcard.jobcard_id OR corrugator1.jobcardid2 = jobcard.jobcard_id"
+// plus date_format() on corrugator_date and a GROUP BY over every joined row. None of that can use an
+// index, so MySQL scanned jobcard x corrugator1 for every page load (and twice: count + page), which is
+// what exceeded max_execution_time. Now:
+//   - the list only joins the first job card (by primary key) for related_salesorder / related_mastercard;
+//   - MC / SOF / client searches use EXISTS on "jobcard_id IN (jobcardid, jobcardid2)" (index lookups);
+//   - the date range is compared on the raw column so an index on corrugator1.corrugator_date can be used;
+//   - the total is a COUNT(*) instead of fetching every row.
+$vFromDate = explodeword($fromdate);
+$vToDate = explodeword($todate);
+$vKeyword = trim((string)$keyword);
 
+$vDateRange = " c.corrugator_date >= '" . $vFromDate . "' and c.corrugator_date < DATE_ADD('" . $vToDate . "', INTERVAL 1 DAY) ";
+$vJobCards = " j.jobcard_id IN (c.jobcardid, c.jobcardid2) ";
 
-$querysearch = $querysearch . " group by corrugator_id";
-$querysearch = $querysearch . " Order By corrugator_reference Desc ";
+if ($searchby == 1) {
+	// Date search: exact day, no From/To range (same as before)
+	$querywhere = ($vKeyword != '') ? " c.corrugator_date >= $PRef and c.corrugator_date < DATE_ADD($PRef, INTERVAL 1 DAY) " : " 1=1 ";
+} else if ($searchby == 4) {
+	$querywhere = $vDateRange . " and EXISTS (select 1 from $jobcardTable j inner join mastercard m on m.mastercard_id = j.related_mastercard " .
+		" where $vJobCards " . ($vKeyword != '' ? " and m.mastercard_reference Like Concat('%', $PRef, '%') " : "") . ") ";
+} else if ($searchby == 5) {
+	$querywhere = $vDateRange . " and EXISTS (select 1 from $jobcardTable j inner join sorder so on so.sorder_id = j.related_salesorder " .
+		" where $vJobCards " . ($vKeyword != '' ? " and so.sorder_reference Like Concat('%', $PRef, '%') " : "") . ") ";
+} else if ($searchby == 3) {
+	$querywhere = $vDateRange . " and EXISTS (select 1 from $jobcardTable j left join clients cl on cl.Ledger_number = j.Clientcode " .
+		" where $vJobCards " . ($vKeyword != '' ? " and (j.Clientcode Like Concat('%', $PRef, '%') or cl.Ledger_name Like Concat($PRef, '%')) " : " and j.Clientcode is not null ") . ") ";
+} else {
+	// Reference (default)
+	$querywhere = $vDateRange . ($vKeyword != '' ? " and c.corrugator_reference Like Concat('%', $PRef, '%') " : "");
+}
 
+$querycount = " SELECT count(*) From corrugator1 c Where " . $querywhere;
+$resultcount = mysqli_query($connection, $querycount) or die(mysqli_error($connection));
+$rowcount = mysqli_fetch_row($resultcount);
+$totalrows = (int)($rowcount[0] ?? 0);
 
-$resultsearch = mysqli_query($connection, $querysearch) or die(mysqli_error($connection));
-$totalrows = mysqli_num_rows($resultsearch);
-
-
-$querysearch = $querysearch . " limit " . $startrange . "," . $perpage;
+$querysearch = " SELECT c.corrugator_id as corrugator_id, c.jobcardid AS JobCard_Id, c.jobcardid2 AS JobCard_Id2, c.corrugator_reference as corrugator_reference,
+		date_format(c.corrugator_date,'%d/%m/%Y') as corrugator_date,
+		jc1.related_salesorder as related_salesorder, jc1.related_mastercard as related_mastercard,
+		c.corrugator_confirm as corrugator_confirm, c.corrugator_approve as corrugator_approve
+	From corrugator1 c
+	left join $jobcardTable jc1 on jc1.jobcard_id = c.jobcardid
+	Where " . $querywhere .
+	" Order By c.corrugator_reference Desc " .
+	" limit " . (int)$startrange . "," . (int)$perpage;
 //echo $querysearch;
 $resultsearch = mysqli_query($connection, $querysearch) or die(mysqli_error($connection));
 
@@ -726,25 +751,21 @@ while ($rows = mysqli_fetch_array($resultsearch)) {
 	$txtSOF = '';
 	$txtItemDesc = '';
 
-	$queryRef = " SELECT mastercard.mastercard_id,sorder.sorder_id,mastercard.product_desc
-	From corrugator1
-	left join jobcard on corrugator1.jobcardid = jobcard.jobcard_id
-					or corrugator1.jobcardid2 = jobcard.jobcard_id
-	left join mastercard on mastercard.mastercard_id = jobcard.related_mastercard
-	left join sorder     on sorder.sorder_id     = jobcard.related_salesorder
-	where  corrugator_id='$corrugator_id'";
+	$queryRef = " SELECT m.MasterCard_Reference, ifNull(m.mastercard_linked,0) as mastercard_linked, ifNull(m.mastercard_linked_count,0) as mastercard_linked_count,
+			so.sorder_reference, m.product_desc
+		From $jobcardTable j
+		left join mastercard m on m.mastercard_id = j.related_mastercard
+		left join sorder so    on so.sorder_id    = j.related_salesorder
+		where j.jobcard_id IN ('" . $JobCard_Id . "', '" . $JobCard_Id2 . "')";
 	//echo$queryRef;exit;
 	$resultRef = mysqli_query($connection, $queryRef) or die(mysqli_error($connection));
 	while ($rowsRef = mysqli_fetch_array($resultRef)) {
-		extract($rowsRef);
+		$MasterCard_Reference = (string)$rowsRef['MasterCard_Reference'];
+		$mastercard_linked = $rowsRef['mastercard_linked'];
+		$mastercard_linked_count = $rowsRef['mastercard_linked_count'];
+		$sorder_reference = (string)$rowsRef['sorder_reference'];
+		$product_desc = $rowsRef['product_desc'];
 
-		$MasterCard_Reference = '';
-		$mastercard_linked = 0;
-		$mastercard_linked_count = 0;
-		$queryMC_Detail = "select MasterCard_Reference,ifNull(mastercard_linked,0) as mastercard_linked,ifNull(mastercard_linked_count,0) as mastercard_linked_count from mastercard where mastercard_id='$mastercard_id'";
-		$resultMC_Detail = mysqli_query($connection, $queryMC_Detail) or die(mysqli_error($connection));
-		$rowsMC_Detail = mysqli_fetch_array($resultMC_Detail);
-		if (is_array($rowsMC_Detail)) extract($rowsMC_Detail);
 		if (strlen($MasterCard_Reference) < 4) {
 			if (strlen($MasterCard_Reference) == 1)
 				$MasterCard_Reference = "MC0000" . $MasterCard_Reference;
@@ -761,12 +782,6 @@ while ($rows = mysqli_fetch_array($resultsearch)) {
 		}
 		$txtMC .= $MasterCard_Reference . " ";
 
-
-		$sorder_reference = '';
-		$querySOF_Detail = "select sorder_reference from sorder where sorder_id='$sorder_id'";
-		$resultSOF_Detail = mysqli_query($connection, $querySOF_Detail) or die(mysqli_error($connection));
-		$rowsSOF_Detail = mysqli_fetch_array($resultSOF_Detail);
-		if (is_array($rowsSOF_Detail)) extract($rowsSOF_Detail);
 		if (strlen($sorder_reference) < 4) {
 			if (strlen($sorder_reference) == 1)
 				$sorder_reference = "SOF0000" . $sorder_reference;
