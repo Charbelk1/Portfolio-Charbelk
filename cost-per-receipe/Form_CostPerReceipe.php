@@ -243,13 +243,6 @@ function printPrev(printaccess, exp)
 	height = screen.height - 66;
 	var str='';
 		
-	for (var i=0; i < document.form1.reports.length; i++)
-	{
-		if (document.form1.reports[i].checked)
-		{
-			var varreports = document.form1.reports[i].value;
-		} 
-	}
 
 	// for (var i=0; i < document.form1.groupby.length; i++)
 	// {
@@ -285,7 +278,7 @@ function printPrev(printaccess, exp)
 
 
 	str =  prefix+'CostPerReceipe.php?fromdate='+varfromdate+'&todate='+vartodate
-		 +"&ItemCode="+encodeURIComponent(ItemCode)+'&qtyType='+qtyType+'&reports='+varreports;		      
+		 +"&ItemCode="+encodeURIComponent(ItemCode)+'&qtyType='+qtyType;		      
 	if (printaccess==1 || exp == 1)
 		window.open(str);
 	else
@@ -866,7 +859,6 @@ echo '  <table border="0" align="center" width="100%">';
 
 echo" <tr>";	  
 echo"   <td width='15%' height='19' colspan='2' align='left' bgcolor='#F5F5F5'><span class='style8'>Date</span></td> ";
-echo"   <td width='20%' height='19' colspan='1' align='left' bgcolor='#F5F5F5'><span class='style8'>Reports</span></td> ";
 // echo"   <td width='20%' height='19' colspan='1' align='left' bgcolor='#F5F5F5'><span class='style8'>Group By</span></td> ";
 echo"   <td width='20%' height='19' colspan='1' align='left' bgcolor='#F5F5F5'><span class='style8'>Show</span></td> ";
 //echo"   <td width='8%' height='19' align='left' bgcolor='#F5F5F5'><span class='style8'>Currency</span></td>";
@@ -883,21 +875,6 @@ echo"      <input type='text' name='fromdate' value='$fromdate' maxlength='10' s
 echo"      <A HREF=\"#\" onClick=\"displayCalendar(document.form1.fromdate,'dd/mm/yyyy',this); return false;\" NAME=\"anchor1\" ID=\"anchor1\"><image src='./img/cal.gif' border=0 align=center></image></A></span></td>";
 
 
-echo"  
-  <td width='20%' valign='top' rowspan='2' bgcolor='#F5F5F5'> ";
-echo"<span class='style8'><label>";
-echo" <span class='style8'><label>";
-if ($reports != "3" && $reports != "4") $reports = "2";
-echo "<input name='reports' type='radio' value='2' ".($reports=="2" ? "checked" : "")."/>";
-echo "Semi-Finished</label></span>";
-
-echo"   <br><span class='style8'><label>";
-echo "<input name='reports' type='radio' value='3' ".($reports=="3" ? "checked" : "")."/>";
-echo "Finished Goods</label></span>";
-
-echo"   <br><span class='style8'><label>";
-echo "<input name='reports' type='radio' value='4' ".($reports=="4" ? "checked" : "")."/>";
-echo "Both</label></span></td>";
 
 // echo"  
 //   <td width='20%' valign='top' colspan=1 rowspan='2' bgcolor='#F5F5F5'> 

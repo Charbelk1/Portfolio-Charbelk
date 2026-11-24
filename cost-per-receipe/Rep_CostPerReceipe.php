@@ -2,10 +2,6 @@
 /*
  * Cost Per Receipe - Semi-Finished (SF) and Finished Goods (FG)
  *
- * reports = 2 : Semi-Finished only
- * reports = 3 : Finished Goods only
- * reports = 4 : Both (SF section then FG section)
- *
  * SF section (Production Sheet):
  *   qtyType = 0 (Standard)   : qty per batch from PackDt (recipe valid at To Date)
  *   qtyType = 1 (Production) : actual qty from ProductionSheetRM in the date range,
@@ -48,13 +44,8 @@ $fromdate = isset($_GET['fromdate']) ? $_GET['fromdate'] : $fromdate;
 $todate   = isset($_GET['todate'])   ? $_GET['todate']   : $todate;
 $ItemCode = isset($_GET['ItemCode']) ? $_GET['ItemCode'] : $ItemCode;
 $qtyType  = isset($_GET['qtyType'])  ? $_GET['qtyType']  : $qtyType;
-$reports  = isset($_GET['reports'])  ? $_GET['reports']  : $reports;
 $qtyType  = ($qtyType == 1) ? 1 : 0;
-if ($reports != 3 && $reports != 4) $reports = 2;
 $ItemCode = trim($ItemCode);
-
-$showSF = ($reports == 2 || $reports == 4);
-$showFG = ($reports == 3 || $reports == 4);
 
 $querylog = "SELECT print as printaccess from " . $_SESSION['dbLabel'] . ".login where user_account='" . $_SESSION['useraccount'] . "' and Upper(Login_Schema) = Upper('" . $_SESSION['dbName'] . "')";
 $resultlog = mysql_query($querylog, $connection) or die(mysql_error());
@@ -85,9 +76,7 @@ $packdtValid = " And (p.PackDt_FromDate is null or Date_format(p.PackDt_FromDate
 	" And (p.PackDt_ToDate is null or Date_format(p.PackDt_ToDate,'%Y-%m-%d') >= '$sqlTo') ";
 
 $qtyTypeLabel = ($qtyType == 1) ? 'Production' : 'Standard';
-if ($reports == 2)      $ReportTitle = 'Cost Per Receipe - Semi-Finished';
-else if ($reports == 3) $ReportTitle = 'Cost Per Receipe - Finished Goods';
-else                    $ReportTitle = 'Cost Per Receipe - Semi-Finished & Finished Goods';
+$ReportTitle = 'Cost Per Receipe - Semi-Finished & Finished Goods';
 
 $sfCache    = array();  // SF code => computeSF() result
 $isSFCache  = array();  // item code => bool
@@ -157,8 +146,8 @@ echo "<table width='1000' $border align='left' cellpadding='2' cellspacing='0' c
 	<col width='100'><col width='100'><col width='110'><col width='110'>";
 
 // ================================================================ SF SECTION
-if ($showSF) {
-	if ($reports == 4) echo "<tr class='section'><td colspan='8'>Semi-Finished</td></tr>";
+{
+	echo "<tr class='section'><td colspan='8'>Semi-Finished</td></tr>";
 	echo "<tr>
 		<th align='left'>SF Code</th>
 		<th align='left'>SF Name</th>
@@ -228,8 +217,8 @@ if ($showSF) {
 }
 
 // ================================================================ FG SECTION
-if ($showFG) {
-	if ($reports == 4) echo "<tr><td colspan='8'>&nbsp;</td></tr><tr class='section'><td colspan='8'>Finished Goods</td></tr>";
+{
+	echo "<tr><td colspan='8'>&nbsp;</td></tr><tr class='section'><td colspan='8'>Finished Goods</td></tr>";
 	echo "<tr>
 		<th align='left'>FG Code</th>
 		<th align='left'>FG Name</th>
