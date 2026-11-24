@@ -284,13 +284,8 @@ function printPrev(printaccess, exp)
 	var prefix = (exp == 1) ? 'Exp_' : 'Rep_';
 
 
-	str2 =  prefix+'CostPerReceipe.php?fromdate='+varfromdate+'&todate='+vartodate+"&ItemCode="+encodeURIComponent(ItemCode)+'&qtyType='+qtyType;
-
-	str3 =  prefix+'CostPerReceipeFG.php?fromdate='+varfromdate+'&todate='+vartodate
-		 +"&ItemCode="+encodeURIComponent(ItemCode)+'&qtyType='+qtyType;
-		   	
-	if (varreports == 2) str = str2;	
-	if (varreports == 3) str = str3;		      
+	str =  prefix+'CostPerReceipe.php?fromdate='+varfromdate+'&todate='+vartodate
+		 +"&ItemCode="+encodeURIComponent(ItemCode)+'&qtyType='+qtyType+'&reports='+varreports;		      
 	if (printaccess==1 || exp == 1)
 		window.open(str);
 	else
@@ -892,18 +887,17 @@ echo"
   <td width='20%' valign='top' rowspan='2' bgcolor='#F5F5F5'> ";
 echo"<span class='style8'><label>";
 echo" <span class='style8'><label>";
-if ($reports=="2" )
-   echo "<input name='reports' type='radio' value='2' checked onclick='SelectReport(2);'/>";
-else	
-   echo "<input name='reports' type='radio' value='2' checked onclick='SelectReport(2);'/>";
+if ($reports != "3" && $reports != "4") $reports = "2";
+echo "<input name='reports' type='radio' value='2' ".($reports=="2" ? "checked" : "")."/>";
 echo "Semi-Finished</label></span>";
 
 echo"   <br><span class='style8'><label>";
-if ($reports=="3" )
-   echo "<input name='reports' type='radio' value='3' checked onclick='SelectReport(3);'/>";
-else	
-   echo "<input name='reports' type='radio' value='3'   onclick='SelectReport(3);'/>";
-echo "Finished Goods</label></span></td>";
+echo "<input name='reports' type='radio' value='3' ".($reports=="3" ? "checked" : "")."/>";
+echo "Finished Goods</label></span>";
+
+echo"   <br><span class='style8'><label>";
+echo "<input name='reports' type='radio' value='4' ".($reports=="4" ? "checked" : "")."/>";
+echo "Both</label></span></td>";
 
 // echo"  
 //   <td width='20%' valign='top' colspan=1 rowspan='2' bgcolor='#F5F5F5'> 
