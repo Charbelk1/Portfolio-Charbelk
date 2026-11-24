@@ -224,7 +224,7 @@ echo "<table width='1000' $border align='left' cellpadding='2' cellspacing='0' c
 		<th align='left'>FG Name</th>
 		<th align='left'>Item</th>
 		<th align='left'>Item Name</th>
-		<th align='right'>" . ($qtyType == 1 && $isExcel == 0 ? "Qty Produced" : "&nbsp;") . "</th>
+		<th align='right'>&nbsp;</th>
 		<th align='right'>Qty in Ctn</th>
 		<th align='right'>Cost / KG</th>
 		<th align='right'>Cost</th>
@@ -325,7 +325,7 @@ echo "<table width='1000' $border align='left' cellpadding='2' cellspacing='0' c
 			}
 			echo "<td>" . htmlspecialchars($l[0]) . "</td>";
 			echo "<td>" . htmlspecialchars($l[1]) . "</td>";
-			if ($i == 0) echo "<td rowspan='$rowspan' align='right' valign='top'>" . ($qtyType == 1 && $isExcel == 0 ? fmt($prodQty, 2, $isExcel) : "") . "</td>";
+			if ($i == 0) echo "<td rowspan='$rowspan' align='right' valign='top'></td>";
 			echo "<td align='right'>" . fmt($l[2], 4, $isExcel) . "</td>";
 			echo "<td align='right'>" . fmt($l[3], 6, $isExcel) . "</td>";
 			echo "<td align='right'>" . fmt($l[4], $DecimalBase + 2, $isExcel) . "</td>";
